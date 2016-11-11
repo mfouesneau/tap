@@ -65,7 +65,7 @@ class TAP_AsyncQuery(object):
             "Accept":       "text/plain"
         }
 
-        data = {'query': self.adql,
+        data = {'query': str(self.adql),
                 'request': 'doQuery',
                 'lang': 'adql',
                 'format': 'votable',
@@ -136,6 +136,17 @@ class TAP_AsyncQuery(object):
         connection.close()
         return table
 
+    def _repr_markdown_(self):
+        try:
+            from IPython.display import Markdown
+
+            return Markdown("""*ADQL Query*\n```mysql\n{0}\n```\n* *Status*:   `{1}`, Reason `{2}`\n* *Location*: {3}\n* *Job id*:   `{4}`\n
+                            """.format(str(self.adql), str(self.response.status),
+                                       str(self.response.reason),
+                                       self.location, self.jobid))._repr_markdown_()
+        except ImportError:
+            pass
+
 
 class TAP_Service(object):
     """
@@ -177,7 +188,7 @@ class TAP_Service(object):
         """
         if sync:
             r = requests.post(self.tap_endpoint + '/sync',
-                              data={'query': adql_query,
+                              data={'query': str(adql_query),
                                     'request': 'doQuery',
                                     'lang': 'adql',
                                     'format': 'votable',
@@ -217,15 +228,15 @@ class TAP_Service(object):
 class TAPVizieR(TAP_Service):
     """ TAPVizier / CDS TAP service """
     def __init__(self, *args, **kwargs):
-        self.host = 'tapvizier.u-strasbg.fr'
-        self.path = '/TAPVizieR/tap'
-        self.port = 80
-        TAP_Service.__init__(self, *args, **kwargs)
+        host = 'tapvizier.u-strasbg.fr'
+        path = '/TAPVizieR/tap'
+        port = 80
+        TAP_Service.__init__(self, host, path, port, *args, **kwargs)
 
 
 class GaiaArchive(TAP_Service):
     def __init__(self, *args, **kwargs):
-        self.host = "gea.esac.esa.int"
-        self.port = 80
-        self.path = "/tap-server/tap"
-        TAP_Service.__init__(self, *args, **kwargs)
+        host = "gea.esac.esa.int"
+        port = 80
+        path = "/tap-server/tap"
+        TAP_Service.__init__(self, host, path, port, *args, **kwargs)
