@@ -12,6 +12,7 @@ except ImportError:  # python 2
     from urllib import urlencode
 
 from xml.dom.minidom import parseString
+from lxml import etree
 from astropy.table import Table
 
 
@@ -240,3 +241,46 @@ class GaiaArchive(TAP_Service):
         port = 80
         path = "/tap-server/tap"
         TAP_Service.__init__(self, host, path, port, *args, **kwargs)
+
+
+def resolve(objectName):
+        """
+        Resolve the object by name using CDS
+
+        Parameters
+        ----------
+        objectName: str
+            Name to resolve
+
+        Returns
+        -------
+        ra: float
+            right ascension
+        dec: float
+            declination
+
+        Example:
+        >> resolve('M31')
+        (10.684708329999999, 41.268749999999997)
+
+        Requires the following module: lxml
+        """
+        host = "cdsweb.u-strasbg.fr"
+        port = 80
+        path = "/cgi-bin/nph-sesame/-ox?{0}".format(objectName)
+        connection = HTTPConnection(host, port)
+        connection.request("GET", path)
+        response = connection.getresponse()
+        xml = response.read()
+        try:
+            tree = etree.fromstring(xml.encode('utf-8'))
+        except:
+            tree = etree.fromstring(xml)
+        # take the first resolver
+        pathRa = tree.xpath('/Sesame/Target/Resolver[1]/jradeg')
+        pathDec = tree.xpath('/Sesame/Target/Resolver[1]/jdedeg')
+        if len(pathRa)==0:
+            return []
+        ra = float(pathRa[0].text)
+        dec = float(pathDec[0].text)
+        return ra,dec
