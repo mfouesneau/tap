@@ -13,7 +13,14 @@ except ImportError:  # python 2
 
 from xml.dom.minidom import parseString
 from lxml import etree
+import json
 from astropy.table import Table
+
+try:
+    from IPython.display import Markdown, display
+except ImportError:
+    Markdown = None
+    display = None
 
 
 def _pretty_print_time(t):
@@ -132,8 +139,8 @@ class TAP_AsyncQuery(object):
         connection = HTTPConnection(self.host, self.port)
         connection.request("GET", self.path + "/" + self.jobid + "/results/result")
         self.response = connection.getresponse()
-        data = self.response.read()
-        table = Table.read(BytesIO(data), format="votable")
+        self.data = self.response.read()
+        table = Table.read(BytesIO(self.data), format="votable")
         connection.close()
         return table
 
@@ -195,9 +202,12 @@ class TAP_Service(object):
                                     'format': 'votable',
                                     'phase': 'run'}
                               )
-            table = Table.read(BytesIO(r.text.encode('utf8')),
-                               format="votable")
-            return table
+            try:
+                table = Table.read(BytesIO(r.text.encode('utf8')),
+                                   format="votable")
+                return table
+            except:  # help debugging
+                self.response = r
         else:
             return self.query_async(adql_query)
 
@@ -279,8 +289,85 @@ def resolve(objectName):
         # take the first resolver
         pathRa = tree.xpath('/Sesame/Target/Resolver[1]/jradeg')
         pathDec = tree.xpath('/Sesame/Target/Resolver[1]/jdedeg')
-        if len(pathRa)==0:
+        if len(pathRa) == 0:
             return []
         ra = float(pathRa[0].text)
         dec = float(pathDec[0].text)
         return ra,dec
+
+
+class QueryStr(object):
+    """ A Query string that also shows well in notebook mode"""
+    def __init__(self, adql, *args, **kwargs):
+        verbose = kwargs.pop('verbose', True)
+        self.text = adql
+        self._parser = 'https://sqlformat.org/api/v1/format'
+        self._pars = {'sql': adql, 'reindent': 0, 'keyword_case': 'upper'}
+        self.parse_sql(**kwargs)
+        if verbose:
+            try:
+                display(self)
+            except:
+                pass
+
+    def parse_sql(self, **kwargs):
+        self._pars.update(**kwargs)
+        res = requests.post(self._parser, self._pars)
+        self.text = json.loads(res.text)['result']
+        return self
+
+    def __str__(self):
+        return self.text
+
+    def _repr_markdown_(self):
+        try:
+            return Markdown("""*ADQL query*\n```mysql\n{0:s}\n```""".format(self.text))._repr_markdown_()
+        except:
+            pass
+
+
+class timeit(object):
+    """ Time a block of code of function.
+        Works as a context manager or decorator.
+    """
+    def __init__(self, func=None):
+        self.func = func
+        self.text = ''
+
+    def __str__(self):
+        return "*Execution time*: {0}".format(self.text)
+
+    def _repr_markdown_(self):
+        try:
+            return Markdown("*Execution time*: {0}".format(self.text))._repr_markdown_()
+        except:
+            pass
+
+    def __call__(self, *args, **kwargs):
+        if self.func is None:
+            return
+        with timeit():
+            result = self.func(*args, **kwargs)
+        return result
+
+    @classmethod
+    def _pretty_print_time(cls, t):
+        units = [u"s", u"ms",u'us',"ns"]
+        scaling = [1, 1e3, 1e6, 1e9]
+        if t > 0.0 and t < 1000.0:
+            order = min(-int(math.floor(math.log10(t)) // 3), 3)
+        elif t >= 1000.0:
+            order = 0
+        else:
+            order = 3
+
+        return "%.3g %s" % (t * scaling[order], units[order])
+
+    def __enter__(self):
+        self.start = time.time()
+
+    def __exit__(self, *args, **kwargs):
+        self.stop = time.time()
+        self.text = self._pretty_print_time(self.stop - self.start)
+        display(self)
+
