@@ -140,9 +140,21 @@ class TAP_AsyncQuery(object):
         connection.request("GET", self.path + "/" + self.jobid + "/results/result")
         self.response = connection.getresponse()
         self.data = self.response.read()
-        table = Table.read(BytesIO(self.data), format="votable")
         connection.close()
-        return table
+        try:
+            table = Table.read(BytesIO(self.data), format="votable")
+            return table
+        except:
+            content = parseString(self.response.text)
+            content = parseString(self.response.text)
+            text = []
+            for k in content.getElementsByTagName('INFO'):
+                name, value = k.attributes.values()
+                if 'QUERY_STATUS' in value.nodeValue:
+                    status = value.nodeValue
+                    print(status)
+                    text.append(k.firstChild.nodeValue.replace('.', '.\n').replace(':', ':\n'))
+            raise RuntimeError('Query error.\n{0}'.format('\n'.join(text)))
 
     def _repr_markdown_(self):
         try:
@@ -208,6 +220,15 @@ class TAP_Service(object):
                 return table
             except:  # help debugging
                 self.response = r
+                content = parseString(self.response.text)
+                text = []
+                for k in content.getElementsByTagName('INFO'):
+                    name, value = k.attributes.values()
+                    if 'QUERY_STATUS' in value.nodeValue:
+                        status = value.nodeValue
+                        print(status)
+                        text.append(k.firstChild.nodeValue.replace('.', '.\n').replace(':', ':\n'))
+                raise RuntimeError('Query error.\n{0}'.format('\n'.join(text)))
         else:
             return self.query_async(adql_query)
 
@@ -234,6 +255,21 @@ class TAP_Service(object):
         if submit:
             q.submit(**kwargs)
         return q
+
+    def get_table_list(self):
+        """ returns the list of available tables from the service
+
+        ADQL query: SELECT * from TAP_SCHEMA.tables
+
+        Returns
+        -------
+        tab: Table
+            list of the tables with description, size and types
+        """
+        return self.query("""select * from TAP_SCHEMA.tables where schema_name not like 'tap_schema'""")
+
+    def get_table_info(self, tablename):
+        return self.query("Select top 0 * from {0} ".format(tablename))
 
 
 class TAPVizieR(TAP_Service):
@@ -308,13 +344,16 @@ class QueryStr(object):
             try:
                 display(self)
             except:
-                pass
+                print(self)
 
     def parse_sql(self, **kwargs):
         self._pars.update(**kwargs)
         res = requests.post(self._parser, self._pars)
         self.text = json.loads(res.text)['result']
         return self
+
+    def __repr__(self):
+        return self.text
 
     def __str__(self):
         return self.text
