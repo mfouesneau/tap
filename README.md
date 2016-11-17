@@ -50,7 +50,7 @@ use `get` to obtain the data later on
 result = query.get()
 ```
 
-** authentication **
+**authentication**
 
 use the `login` and `logout` methods to authenticate with your account.
 Any `async` query will be stored into your account.
