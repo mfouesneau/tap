@@ -49,8 +49,11 @@ class TAP_AsyncQuery(object):
         port of the service
     adql_query: str
         query
+    session: Session object
+        use a given requests.Session to proceed
+        esp. useful with authenticated sessions
     """
-    def __init__(self, adql_query, host, path, port=80):
+    def __init__(self, adql_query, host, path, port=80, session=None):
         """ set the query """
         self.adql = adql_query
         self.host = host
@@ -59,6 +62,7 @@ class TAP_AsyncQuery(object):
         self.location = None
         self.jobid = None
         self.response = None
+        self.session = session
 
     def submit(self, silent=False):
         """ Submit the query to the server
@@ -68,20 +72,25 @@ class TAP_AsyncQuery(object):
         silent: bool
             prints some information if not set
         """
-        headers = {
-            "Content-type": "application/x-www-form-urlencoded",
-            "Accept":       "text/plain"
-        }
-
         data = {'query': str(self.adql),
                 'request': 'doQuery',
                 'lang': 'adql',
                 'format': 'votable',
                 'phase': 'run'}
 
+        headers = {
+            "Content-type": "application/x-www-form-urlencoded",
+            "Accept":       "text/plain"
+        }
+
+        # add authentication and other cookies to the header
+        try:
+            cookies = self.session.cookies
+            headers['Cookie'] = ';'.join("{0}={1}".format(k,v) for k,v in cookies.items())
+        except:
+            pass
         connection = HTTPConnection(self.host, self.port)
         connection.request("POST", self.path, urlencode(data), headers)
-
         #Status
         self.response = connection.getresponse()
         #Server job location (URL)
@@ -96,13 +105,44 @@ class TAP_AsyncQuery(object):
             print("Location: " + self.location)
             print("Job id: " + self.jobid)
 
+    @classmethod
+    def reacall_query(cls, host, path, port, jobid):
+        """ Connect to a remote job
+        Parameters
+        ----------
+        host: str
+            tap host
+        path: str
+            path to the service on host
+        port: int
+            port of the service
+        jobid: str
+            job identifier
+
+        Returns
+        -------
+        query: TAP_AsyncQuery
+            asynchrone query object
+        """
+        location = '{1:s}/{2:s}/async/{0:s}'.format(jobid, host, path)
+        q = cls("", host, path, port)
+        q.location = location
+        q.jobid = jobid
+        return q
+
     @property
     def status(self):
         """ Check job status on the server """
-        connection = HTTPConnection(self.host, self.port)
-        connection.request("GET", self.path + "/" + self.jobid)
-        self.response = connection.getresponse()
-        data = self.response.read()
+        headers = {}
+        # add authentication and other cookies to the header
+        try:
+            self.response = self.session.get('http://' + self.location)
+            data = self.response.text
+        except:
+            connection = HTTPConnection(self.host, self.port)
+            connection.request("GET", self.path + "/" + self.jobid, headers)
+            self.response = connection.getresponse()
+            data = self.response.read()
         #XML response: parse it to obtain the current status
         dom = parseString(data)
         phase_element = dom.getElementsByTagName('uws:phase')[0]
@@ -136,16 +176,22 @@ class TAP_AsyncQuery(object):
         if not self.finished:
             return
         #Get results
-        connection = HTTPConnection(self.host, self.port)
-        connection.request("GET", self.path + "/" + self.jobid + "/results/result")
-        self.response = connection.getresponse()
-        self.data = self.response.read()
-        connection.close()
+        try:
+            self.response = self.session.get('http://' + self.location + "/results/result")
+            self.data = self.response.text
+        except:
+            connection = HTTPConnection(self.host, self.port)
+            connection.request("GET", self.path + "/" + self.jobid + "/results/result")
+            self.response = connection.getresponse()
+            self.data = self.response.read()
+            connection.close()
         try:
             table = Table.read(BytesIO(self.data), format="votable")
             return table
-        except:
-            content = parseString(self.response.text)
+        except TypeError:
+            table = Table.read(BytesIO(self.data.encode('utf8')), format="votable")
+            return table
+        except Exception as e:
             content = parseString(self.response.text)
             text = []
             for k in content.getElementsByTagName('INFO'):
@@ -154,6 +200,7 @@ class TAP_AsyncQuery(object):
                     status = value.nodeValue
                     print(status)
                     text.append(k.firstChild.nodeValue.replace('.', '.\n').replace(':', ':\n'))
+            print(e)
             raise RuntimeError('Query error.\n{0}'.format('\n'.join(text)))
 
     def _repr_markdown_(self):
@@ -185,11 +232,56 @@ class TAP_Service(object):
         self.host = host
         self.port = port
         self.path = path
+        self.session = requests.Session()
 
     @property
     def tap_endpoint(self):
         """ Full path """
         return "http://{s.host:s}{s.path:s}".format(s=self)
+
+    def reacall_query(self, jobid):
+        """ Connect to a remote job
+        Parameters
+        ----------
+        jobid: str
+            job identifier
+
+        Returns
+        -------
+        query: TAP_AsyncQuery
+            asynchrone query object
+        """
+        location = '{1:s}{2:s}/async/{0:s}'.format(jobid, self.host, self.path)
+        q = TAP_AsyncQuery("", self.host, self.path, self.port, self.session)
+        q.location = location
+        q.jobid = jobid
+        return q
+
+    def login(self, username, password=None):
+        """
+        Login to the service
+        Password is not stored with this object, only the cookie will be
+
+        Parameters
+        ----------
+        username: string
+            username to use with this service
+        password: string, optional
+            password. If not provided, will prompt for it (not stored later)
+        """
+        if password is None:
+            import getpass
+            pw = getpass.getpass()
+        r = self.session.post("https://{s.host:s}/tap-server/login".format(s=self),
+                              data={'username': username, 'password':pw})
+        if not r.ok:
+            raise RuntimeError('Authentication failed\n' + str(r))
+
+    def logout(self):
+        """
+        Logout from the service
+        """
+        return self.session.post("https://{s.host:s}/tap-server/logout".format(s=self))
 
     def query(self, adql_query, sync=True):
         """
@@ -207,13 +299,13 @@ class TAP_Service(object):
             votable result
         """
         if sync:
-            r = requests.post(self.tap_endpoint + '/sync',
-                              data={'query': str(adql_query),
-                                    'request': 'doQuery',
-                                    'lang': 'adql',
-                                    'format': 'votable',
-                                    'phase': 'run'}
-                              )
+            r = self.session.post(self.tap_endpoint + '/sync',
+                                  data={'query': str(adql_query),
+                                        'request': 'doQuery',
+                                        'lang': 'adql',
+                                        'format': 'votable',
+                                        'phase': 'run'}
+                                  )
             try:
                 table = Table.read(BytesIO(r.text.encode('utf8')),
                                    format="votable")
@@ -251,7 +343,8 @@ class TAP_Service(object):
         """
         q = TAP_AsyncQuery(adql_query, self.host,
                            self.path + '/async',
-                           port=self.port)
+                           port=self.port,
+                           session=self.session)
         if submit:
             q.submit(**kwargs)
         return q
@@ -270,6 +363,33 @@ class TAP_Service(object):
 
     def get_table_info(self, tablename):
         return self.query("Select top 0 * from {0} ".format(tablename))
+
+    def upload_table(self, table_name, path, **kwargs):
+        """
+        upload a table to your private local space in the archive.
+
+        Parameters
+        ----------
+        table_name: str
+            The name to assign to this table.
+        path: str
+            The local path of the table to upload
+
+        Returns
+        -------
+        success: bool
+            True if the upload was successful.
+        """
+
+        with open(path, "r") as fp:
+            url = self.tap_endpoint[:-3] + 'Upload'
+            self.response = self.session.post(url,
+                                              files=dict(FILE=fp),
+                                              data=dict(TABLE_NAME=table_name))
+        if not self.response.ok:
+            raise RuntimeError("Upload failed")
+
+        return True
 
 
 class TAPVizieR(TAP_Service):
@@ -409,4 +529,3 @@ class timeit(object):
         self.stop = time.time()
         self.text = self._pretty_print_time(self.stop - self.start)
         display(self)
-
