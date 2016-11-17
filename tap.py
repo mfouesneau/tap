@@ -106,7 +106,7 @@ class TAP_AsyncQuery(object):
             print("Job id: " + self.jobid)
 
     @classmethod
-    def reacall_query(cls, host, path, port, jobid):
+    def recall_query(cls, host, path, port, jobid):
         """ Connect to a remote job
         Parameters
         ----------
