@@ -9,6 +9,12 @@ when you know how to do it...
 
 This package provides a module interface to TAP as well as not so basic examples from the Gaia DR1.
 
+## Quick install
+
+```
+pip install git+https://github.com/mfouesneau/tap
+```
+
 
 ## Content
 
