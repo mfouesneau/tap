@@ -6,7 +6,7 @@ def readme():
 
 setup(name = "tap",
     version = 0.1,
-    description = "a simple table-access-protocol interface for python". 
+    description = "a simple table-access-protocol interface for python",
     long_description = readme(),
     author = "Morgan Fouesneau",
     author_email = "",
