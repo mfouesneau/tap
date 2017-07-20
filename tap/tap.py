@@ -74,7 +74,7 @@ class TAP_AsyncQuery(object):
         """
         data = {'query': str(self.adql),
                 'request': 'doQuery',
-                'lang': 'adql',
+                'lang': 'ADQL',
                 'format': 'votable',
                 'phase': 'run'}
 
@@ -302,7 +302,7 @@ class TAP_Service(object):
             r = self.session.post(self.tap_endpoint + '/sync',
                                   data={'query': str(adql_query),
                                         'request': 'doQuery',
-                                        'lang': 'adql',
+                                        'lang': 'ADQL',
                                         'format': 'votable',
                                         'phase': 'run'}
                                   )
