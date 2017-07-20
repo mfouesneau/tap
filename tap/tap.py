@@ -53,11 +53,12 @@ class TAP_AsyncQuery(object):
         use a given requests.Session to proceed
         esp. useful with authenticated sessions
     """
-    def __init__(self, adql_query, host, path, port=80, session=None):
+    def __init__(self, adql_query, host, path, port=80, session=None, protocol='http'):
         """ set the query """
         self.adql = adql_query
         self.host = host
         self.port = port
+        self.protocol = protocol
         self.path = path
         self.location = None
         self.jobid = None
@@ -136,7 +137,7 @@ class TAP_AsyncQuery(object):
         headers = {}
         # add authentication and other cookies to the header
         try:
-            self.response = self.session.get('http://' + self.location)
+            self.response = self.session.get(self.protocol + '://' + self.location)
             data = self.response.text
         except:
             connection = HTTPConnection(self.host, self.port)
@@ -177,7 +178,7 @@ class TAP_AsyncQuery(object):
             return
         #Get results
         try:
-            self.response = self.session.get('http://' + self.location + "/results/result")
+            self.response = self.session.get(self.protocol + '://' + self.location + "/results/result")
             self.data = self.response.text
         except:
             connection = HTTPConnection(self.host, self.port)
@@ -228,16 +229,17 @@ class TAP_Service(object):
     adql_query: str
         query
     """
-    def __init__(self, host, path, port=80, **kargs):
+    def __init__(self, host, path, port=80, protocol='http', **kargs):
         self.host = host
         self.port = port
         self.path = path
+        self.protocol = protocol
         self.session = requests.Session()
 
     @property
     def tap_endpoint(self):
         """ Full path """
-        return "http://{s.host:s}{s.path:s}".format(s=self)
+        return "{s.protocol:s}://{s.host:s}{s.path:s}".format(s=self)
 
     def reacall_query(self, jobid):
         """ Connect to a remote job
@@ -406,6 +408,7 @@ class GaiaArchive(TAP_Service):
         host = "gea.esac.esa.int"
         port = 80
         path = "/tap-server/tap"
+        protocol = "https"
         TAP_Service.__init__(self, host, path, port, *args, **kwargs)
         
         
