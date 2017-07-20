@@ -409,12 +409,12 @@ class GaiaArchive(TAP_Service):
         TAP_Service.__init__(self, host, path, port, *args, **kwargs)
         
         
-class GAVO(tap.TAP_Service):
+class GAVO(TAP_Service):
     def __init__(self, *args, **kwargs):
         host = 'dc.zah.uni-heidelberg.de'
         path = '/tap'
         port = 80
-        tap.TAP_Service.__init__(self, host, path, port, *args, **kwargs)
+        TAP_Service.__init__(self, host, path, port, *args, **kwargs)
 
         
 def resolve(objectName):
