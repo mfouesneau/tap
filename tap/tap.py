@@ -273,9 +273,9 @@ class TAP_Service(object):
         """
         if password is None:
             import getpass
-            pw = getpass.getpass()
+            password = getpass.getpass()
         r = self.session.post("https://{s.host:s}/tap-server/login".format(s=self),
-                              data={'username': username, 'password':pw})
+                              data={'username': username, 'password':password})
         if not r.ok:
             raise RuntimeError('Authentication failed\n' + str(r))
 
@@ -410,8 +410,8 @@ class GaiaArchive(TAP_Service):
         path = "/tap-server/tap"
         protocol = "https"
         TAP_Service.__init__(self, host, path, port, *args, **kwargs)
-        
-        
+
+
 class GAVO(TAP_Service):
     def __init__(self, *args, **kwargs):
         host = 'dc.zah.uni-heidelberg.de'
@@ -419,7 +419,7 @@ class GAVO(TAP_Service):
         port = 80
         TAP_Service.__init__(self, host, path, port, *args, **kwargs)
 
-        
+
 def resolve(objectName):
         """
         Resolve the object by name using CDS
