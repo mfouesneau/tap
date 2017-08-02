@@ -107,7 +107,7 @@ class TAP_AsyncQuery(object):
             print("Job id: " + self.jobid)
 
     @classmethod
-    def recall_query(cls, host, path, port, jobid):
+    def recall_query(cls, host, path, port, jobid, protocol='http'):
         """ Connect to a remote job
         Parameters
         ----------
@@ -129,6 +129,7 @@ class TAP_AsyncQuery(object):
         q = cls("", host, path, port)
         q.location = location
         q.jobid = jobid
+        q.protocol = protocol
         return q
 
     @property
@@ -137,7 +138,9 @@ class TAP_AsyncQuery(object):
         headers = {}
         # add authentication and other cookies to the header
         try:
-            self.response = self.session.get(self.protocol + '://' + self.location)
+            location = self.location
+            location = location.split('://')[-1]
+            self.response = self.session.get(self.protocol + '://' + location)
             data = self.response.text
         except:
             connection = HTTPConnection(self.host, self.port)
@@ -178,7 +181,9 @@ class TAP_AsyncQuery(object):
             return
         #Get results
         try:
-            self.response = self.session.get(self.protocol + '://' + self.location + "/results/result")
+            location = self.location
+            location = location.split('://')[-1]
+            self.response = self.session.get(self.protocol + '://' + location + "/results/result")
             self.data = self.response.text
         except:
             connection = HTTPConnection(self.host, self.port)
@@ -241,7 +246,7 @@ class TAP_Service(object):
         """ Full path """
         return "{s.protocol:s}://{s.host:s}{s.path:s}".format(s=self)
 
-    def reacall_query(self, jobid):
+    def recall_query(self, jobid):
         """ Connect to a remote job
         Parameters
         ----------
@@ -254,7 +259,8 @@ class TAP_Service(object):
             asynchrone query object
         """
         location = '{1:s}{2:s}/async/{0:s}'.format(jobid, self.host, self.path)
-        q = TAP_AsyncQuery("", self.host, self.path, self.port, self.session)
+        q = TAP_AsyncQuery("", self.host, self.path, self.port, self.session,
+                           protocol=self.protocol)
         q.location = location
         q.jobid = jobid
         return q
@@ -346,6 +352,7 @@ class TAP_Service(object):
         q = TAP_AsyncQuery(adql_query, self.host,
                            self.path + '/async',
                            port=self.port,
+                           protocol=self.protocol,
                            session=self.session)
         if submit:
             q.submit(**kwargs)
@@ -408,7 +415,7 @@ class GaiaArchive(TAP_Service):
         host = "gea.esac.esa.int"
         port = 80
         path = "/tap-server/tap"
-        protocol = "https"
+        kwargs['protocol'] = "https"
         TAP_Service.__init__(self, host, path, port, *args, **kwargs)
 
 
