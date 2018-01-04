@@ -15,6 +15,7 @@ This package provides a module interface to TAP as well as not so basic examples
 pip install git+https://github.com/mfouesneau/tap
 ```
 
+[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/mfouesneau/tap/master?filepath=examples%2FTAP_tutorial.ipynb)
 
 ## Content
 

@@ -1,0 +1,7 @@
+# These will be installed to the python environment
+numpy
+scipy
+matplotlib
+astropy
+requests
+lxml
