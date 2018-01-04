@@ -1,0 +1,4 @@
+# These will be installed to the python environment
+numpy
+matplotlib
+astropy
