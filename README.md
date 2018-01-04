@@ -15,8 +15,6 @@ This package provides a module interface to TAP as well as not so basic examples
 pip install git+https://github.com/mfouesneau/tap
 ```
 
-[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/mfouesneau/tap/master?filepath=examples%2FTAP_tutorial.ipynb)
-
 ## Content
 
 **Some common code to send ADQL Queries to TAP services and notebook polishing**
@@ -29,6 +27,10 @@ pip install git+https://github.com/mfouesneau/tap
 
 
 ## Quick Start: How to query TAP with this package?
+
+Notebook tutorial available in the `examples` folder. 
+[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/mfouesneau/tap/master?filepath=examples%2FTAP_tutorial.ipynb)
+
 
 Let's start by checking that we can access the data by requesting the first 5 sources in TGAS.
 
