@@ -30,6 +30,8 @@ pip install git+https://github.com/mfouesneau/tap
 
 Notebook tutorial available in the `examples` folder. 
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/mfouesneau/tap/master?filepath=examples%2FTAP_tutorial.ipynb)
+[![nbviewer](https://img.shields.io/badge/render%20on-nbviewer-orange.svg)](https://nbviewer.jupyter.org/github/mfouesneau/tap/blob/master/examples/TAP_tutorial.ipynb)
+[![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/mfouesneau/tap/blob/master/examples/TAP_tutorial.ipynb)
 
 
 Let's start by checking that we can access the data by requesting the first 5 sources in TGAS.
