@@ -427,26 +427,34 @@ class GAVO(TAP_Service):
         TAP_Service.__init__(self, host, path, port, *args, **kwargs)
 
 
-def resolve(objectName):
+def resolve(objectName, full=False):
         """
         Resolve the object by name using CDS
-
         Parameters
         ----------
         objectName: str
             Name to resolve
-
+        full: bool, optional
+            returns more than ra, dec if set.
+            
         Returns
         -------
         ra: float
-            right ascension
+            right ascension in degrees
         dec: float
-            declination
-
+            declination in degrees
+        pmra: float, optional
+            pm along ra (tangent plane approx) in mas/yr
+        pmdec: float, optional
+            pm along dec in mas/yr
+        vel: float
+            radial velocity in km/s
+        epoch: float
+            epoch of the coordinates
+            
         Example:
         >> resolve('M31')
         (10.684708329999999, 41.268749999999997)
-
         Requires the following module: lxml
         """
         host = "cdsweb.u-strasbg.fr"
@@ -463,11 +471,28 @@ def resolve(objectName):
         # take the first resolver
         pathRa = tree.xpath('/Sesame/Target/Resolver[1]/jradeg')
         pathDec = tree.xpath('/Sesame/Target/Resolver[1]/jdedeg')
-        if len(pathRa) == 0:
-            return []
-        ra = float(pathRa[0].text)
-        dec = float(pathDec[0].text)
-        return ra,dec
+        try:
+            ra = float(pathRa[0].text)
+            dec = float(pathDec[0].text)
+        except IndexError:
+            ra = dec = float('Nan')
+        if full:
+            epoch = 2000    # Default on Sesame! not in its outputs though.
+            pathPmRa = tree.xpath('/Sesame/Target/Resolver[1]/pm/pmRA')
+            pathPmDe = tree.xpath('/Sesame/Target/Resolver[1]/pm/pmDE')
+            try:
+                pmra = float(pathPmRa[0].text)
+                pmde = float(pathPmDe[0].text)
+            except IndexError:
+                pmra = pmde = float('NaN')
+            pathVel = tree.xpath('/Sesame/Target/Resolver[1]/Vel/v')
+            try:
+                vel = float(pathVel[0].text)
+            except IndexError:
+                vel = float('NaN')
+            return ra,dec, pmra, pmde, vel, epoch
+        else:
+            return ra, dec
 
 
 class QueryStr(object):
