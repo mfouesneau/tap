@@ -443,6 +443,8 @@ def resolve(objectName, full=False):
             right ascension in degrees
         dec: float
             declination in degrees
+        plx: float
+            mean parallax
         pmra: float, optional
             pm along ra (tangent plane approx) in mas/yr
         pmdec: float, optional
@@ -478,8 +480,13 @@ def resolve(objectName, full=False):
             ra = dec = float('Nan')
         if full:
             epoch = 2000    # Default on Sesame! not in its outputs though.
+            pathPlx  = tree.xpath('/Sesame/Target/Resolver[1]/plx/v')
             pathPmRa = tree.xpath('/Sesame/Target/Resolver[1]/pm/pmRA')
             pathPmDe = tree.xpath('/Sesame/Target/Resolver[1]/pm/pmDE')
+            try:
+              plx  = float(pathPlx[0].text)
+            except IndexError:
+              plx = 0.
             try:
                 pmra = float(pathPmRa[0].text)
                 pmde = float(pathPmDe[0].text)
@@ -490,7 +497,7 @@ def resolve(objectName, full=False):
                 vel = float(pathVel[0].text)
             except IndexError:
                 vel = float('NaN')
-            return ra,dec, pmra, pmde, vel, epoch
+            return ra,dec, plx, pmra, pmde, vel, epoch
         else:
             return ra, dec
 
